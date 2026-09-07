@@ -6,30 +6,20 @@ exports.handler = async (event) => {
     "Content-Type": "application/json",
   };
 
-  // 1. Handle Preflight CORS
   if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ message: "OK" }),
-    };
-  }
-
-  // 2. Hanya terima method POST
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({
-        status: false,
-        message: "Method Not Allowed. Gunakan method POST.",
-      }),
-    };
+    return { statusCode: 200, headers, body: JSON.stringify({ message: "OK" }) };
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
-    const { url } = body;
+    let url = "";
+
+    // Bisa lewat query URL (GET) atau Body (POST)
+    if (event.httpMethod === "GET") {
+      url = event.queryStringParameters?.url || "";
+    } else if (event.httpMethod === "POST") {
+      const body = JSON.parse(event.body || "{}");
+      url = body.url || "";
+    }
 
     if (!url) {
       return {
@@ -42,7 +32,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Request ke API TikWM dengan mode HD aktif (&hd=1)
     const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`);
     const result = await response.json();
 
@@ -52,22 +41,17 @@ exports.handler = async (event) => {
         headers,
         body: JSON.stringify({
           status: false,
-          message: "Gagal mengambil data video. Pastikan link TikTok valid dan publik.",
+          message: "Gagal mengambil data video. Pastikan link TikTok valid.",
         }),
       };
     }
 
     const data = result.data;
     const baseUrl = "https://www.tikwm.com";
-
-    // Helper URL
-    const formatUrl = (path) => {
-      if (!path) return null;
-      return path.startsWith("http") ? path : baseUrl + path;
-    };
+    const formatUrl = (path) => (path ? (path.startsWith("http") ? path : baseUrl + path) : null);
 
     const videoNormal = formatUrl(data.play);
-    const videoHD = formatUrl(data.hdplay) || videoNormal; // Fallback ke video biasa jika HD kosong
+    const videoHD = formatUrl(data.hdplay) || videoNormal;
 
     return {
       statusCode: 200,
@@ -83,19 +67,15 @@ exports.handler = async (event) => {
             username: data.author.unique_id,
             avatar: formatUrl(data.author.avatar),
           },
-          // 3 OPSI DOWNLOAD UTAMA
           options: {
-            // Opsi 1: Video No Watermark (Biasa)
             video_sd: {
               label: "Download Video (No Watermark)",
               url: videoNormal,
             },
-            // Opsi 2: Video HD
             video_hd: {
               label: "Download Video (HD)",
               url: videoHD,
             },
-            // Opsi 3: Audio MP3
             music_mp3: {
               label: "Download MP3 Audio",
               url: formatUrl(data.music),
@@ -110,12 +90,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        status: false,
-        message: "Internal Server Error",
-        error: error.message,
-      }),
+      body: JSON.stringify({ status: false, message: "Server Error", error: error.message }),
     };
   }
 };
-  
