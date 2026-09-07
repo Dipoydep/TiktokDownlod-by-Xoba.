@@ -1,0 +1,12 @@
+{
+  "name": "tiktok-downloader-api",
+  "version": "1.0.0",
+  "description": "Full TikTok Downloader Endpoint for Netlify",
+  "main": "netlify/functions/tiktok.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["tiktok", "downloader", "api", "netlify"],
+  "author": "",
+  "license": "MIT"
+}
